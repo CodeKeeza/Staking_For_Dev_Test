@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 // Solidity developer tech assignment
 // Your task is to create a staking contract.
-// Users stake different quantities of ERC-20 token named “TKN”. Assume that an external caller would periodically transfer reward TKNs to a staking smart contract (no need to implement this logic). Rewards are proportionally distributed based on staked TKN.
+// Users stake different quantities of ERC-20 token named “TKN”. Assume that an public caller would periodically transfer reward TKNs to a staking smart contract (no need to implement this logic). Rewards are proportionally distributed based on staked TKN.
 // Contract caller can:
 // - Stake
 // - Unstake (would be a plus if caller can unstake part of stake)
@@ -21,48 +21,43 @@ contract Staking is Ownable {
 
     IERC20 TKN;
     
-    uint rewardRate = 100;
-    uint lastReward;
-    uint rewardPerToken;
-    uint holdings;
+    uint public rewardRate = 100;
+    uint public lastReward;
+    uint public rewardPerToken;
+    uint public holdings;
 
-    mapping (address => uint) bals;
-    mapping (address => uint) rewards;
-    mapping (address => uint) rewardPerTokenHeld;
+    mapping (address => uint) public bals;
+    mapping (address => uint) public rewards;
+    mapping (address => uint) public rewardPerTokenStaked;
+
     
     constructor(IERC20 _TKN) {
         TKN = _TKN;
     }
 
-    modifier syncRewards(address _who) {
-        rewardPerTokenHeld[_who] = getRewardPerToken();
-        lastReward = block.timestamp;
-        rewards[_who] = getRewardsEarned(_who);
-        rewardPerTokenHeld[_who] = holdings;
-    }
-
-    function stake(uint _amount) external syncRewards(msg.sender) {
+    function stake(uint _amount) public syncRewards(msg.sender) {
         require(_amount != 0, "stake more");
         holdings += _amount;
         bals[msg.sender] += _amount;
         TKN.transferFrom(msg.sender, address(this), _amount);
     }
     
-    function unstake(uint _amount) external syncRewards(msg.sender) {
+    function unstake(uint _amount) public syncRewards(msg.sender) {
         require(_amount != 0, "unstake more");
         require(bals[msg.sender] >= _amount, "balance too low");
         holdings -= _amount;
         bals[msg.sender] -= _amount;
+        harvest();
         TKN.transfer(msg.sender, _amount);
     }
     
-    function harvest() external syncRewards(msg.sender) {
+    function harvest() public syncRewards(msg.sender) {
         uint reward = rewards[msg.sender];
         rewards[msg.sender] = 0;
         TKN.transfer(msg.sender, reward);
     }
 
-    function getRewardPerToken() internal syncRewards(msg.sender) returns(uint){
+    function getRewardPerToken() public syncRewards(msg.sender) returns(uint){
         if(holdings == 0){
             return rewardPerToken;
         }
@@ -70,7 +65,15 @@ contract Staking is Ownable {
     }
 
     function getRewardsEarned(address _who) public syncRewards(msg.sender) returns(uint){
-        return ((bals[_who] * (getRewardPerToken() - rewardPerTokenHeld[_who])) / 1e18) + rewards[_who];
+        return ((bals[_who] * (getRewardPerToken() - rewardPerTokenStaked[_who])) / 1e18) + rewards[_who];
+    }
+
+    modifier syncRewards(address _who) {
+        rewardPerToken = getRewardPerToken();
+        lastReward = block.timestamp;
+        rewards[_who] = getRewardsEarned(_who);
+        rewardPerTokenStaked[_who] = rewardPerToken;
+        _;
     }
 
 
