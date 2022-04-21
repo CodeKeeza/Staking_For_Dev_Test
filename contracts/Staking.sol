@@ -30,52 +30,56 @@ contract Staking is Ownable {
     mapping (address => uint) public rewards;
     mapping (address => uint) public rewardPerTokenStaked;
 
+    event Stake(address _who, uint _amount);
+    event Unstake(address _who, uint _amount);
+    event Harvest(address _who, uint _amount);
     
     constructor(IERC20 _TKN) {
         TKN = _TKN;
     }
 
-    function stake(uint _amount) public syncRewards(msg.sender) {
+    function stake(uint _amount) external syncRewards(msg.sender) {
         require(_amount != 0, "stake more");
         holdings += _amount;
         bals[msg.sender] += _amount;
         TKN.transferFrom(msg.sender, address(this), _amount);
+        emit Stake(msg.sender, _amount);
     }
     
-    function unstake(uint _amount) public syncRewards(msg.sender) {
+    function unstake(uint _amount) external syncRewards(msg.sender) {
         require(_amount != 0, "unstake more");
         require(bals[msg.sender] >= _amount, "balance too low");
         holdings -= _amount;
         bals[msg.sender] -= _amount;
         harvest();
         TKN.transfer(msg.sender, _amount);
+        emit Unstake(msg.sender, _amount);
     }
     
     function harvest() public syncRewards(msg.sender) {
         uint reward = rewards[msg.sender];
         rewards[msg.sender] = 0;
         TKN.transfer(msg.sender, reward);
+        emit Harvest(msg.sender, reward);
     }
 
-    function getRewardPerToken() public syncRewards(msg.sender) returns(uint){
+    function getRewardPerToken() public view returns(uint){
         if(holdings == 0){
             return rewardPerToken;
         }
         return rewardPerToken + (((block.timestamp - lastReward) * rewardRate * 1e18) / holdings);
     }
 
-    function getRewardsEarned(address _who) public syncRewards(msg.sender) returns(uint){
+    function getRewardsEarned(address _who) public view returns(uint){
         return ((bals[_who] * (getRewardPerToken() - rewardPerTokenStaked[_who])) / 1e18) + rewards[_who];
     }
 
     modifier syncRewards(address _who) {
         rewardPerToken = getRewardPerToken();
         lastReward = block.timestamp;
+
         rewards[_who] = getRewardsEarned(_who);
         rewardPerTokenStaked[_who] = rewardPerToken;
         _;
     }
-
-
-
 }
