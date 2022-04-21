@@ -19,7 +19,7 @@ pragma solidity ^0.8.0;
     A quick and minimal staking system brought together to facilitate the test assignment however a protocol should not be designed
     In this way as it leads to a lot of attack vectors and possible bottlenecks as far as protocol efficiency goes
     This is probably the worst way to implement a staking system and what I mean is to have the protocol periodically topped up with
-    A finite supply of tokens. One scenario would be if your token was to be flashloaned it would be v easy to drain the reward pool
+    A finite supply of tokens. One scenario would be if your token was to be flashloaned it would be v easy to drain the reward pool + staked assets
 */
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
